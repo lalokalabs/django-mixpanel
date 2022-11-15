@@ -5,24 +5,35 @@ from datetime import datetime
 from mixpanel import BufferedConsumer
 from mixpanel import Consumer
 from mixpanel import Mixpanel
-from pyramid.events import NewRequest
-from pyramid.path import DottedNameResolver
-from pyramid.request import Request
-from pyramid.response import Response
-from pyramid_mixpanel import Event
-from pyramid_mixpanel import EventProperties
-from pyramid_mixpanel import Events
-from pyramid_mixpanel import ProfileMetaProperties
-from pyramid_mixpanel import ProfileProperties
-from pyramid_mixpanel import Property
-from pyramid_mixpanel.consumer import MockedConsumer
-from pyramid_mixpanel.consumer import PoliteBufferedConsumer
+#from pyramid.events import NewRequest
+#from pyramid.path import DottedNameResolver
+from django.http import HttpRequest
+from django.http import HttpResponse
+from django.conf import settings
+from . import Event
+from . import EventProperties
+from . import Events
+from . import ProfileMetaProperties
+from . import ProfileProperties
+from . import Property
+from .consumer import MockedConsumer
+from .consumer import PoliteBufferedConsumer
+from dotted_name_resolver import DottedNameResolver
 
 import typing as t
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 SettingsType = t.Dict[str, t.Union[str, int, bool]]
 PropertiesType = t.Dict[Property, t.Union[str, int, bool]]
 
+class Settings:
+    @staticmethod
+    def get(key, default=None):
+        key = key.upper()
+        key = key.replace(".", "_")
+        return getattr(settings, key, default)
 
 def distinct_id_is_required(function: t.Callable) -> t.Callable:
     """Raise AttributeError if self.distinct_id is not set on MixpanelTrack."""
@@ -149,7 +160,7 @@ class MixpanelTrack:
             return resolved()
 
     def __init__(
-        self, settings: SettingsType, distinct_id=None, global_event_props=None
+        self, settings, distinct_id=None, global_event_props=None
     ) -> None:
         """Initialize API connector."""
         self.distinct_id = distinct_id
@@ -410,15 +421,14 @@ class MixpanelTrack:
             {prop.name: value for (prop, value) in props.items()},
         )
 
-
-def mixpanel_init(request: Request) -> MixpanelTrack:
+def mixpanel_init(request: HttpRequest) -> MixpanelTrack:
     """Return a configured MixpanelTrack class instance."""
     distinct_id = None
     if getattr(request, "user", None):
         distinct_id = request.user.distinct_id
 
     mixpanel = MixpanelTrack(
-        settings=request.registry.settings, distinct_id=distinct_id
+        settings=Settings, distinct_id=distinct_id
     )
 
     # Global event properties can be set from HTTP headers using
@@ -434,38 +444,26 @@ def mixpanel_init(request: Request) -> MixpanelTrack:
             if event_prop is not None:
                 event_props_from_header[event_prop] = request.headers[header]
             else:
-                if request.registry.settings.get("pyramid_heroku.structlog"):
-                    import structlog
-
-                    logger = structlog.get_logger(__name__)
-                    logger.warning(
-                        f"Property '{property_name}', from request header '{header}'"
-                        " is not a member of event_properties"
-                    )
-                else:
-                    import logging
-
-                    logger = logging.getLogger(__name__)
-                    logger.warning(
-                        f"Property '{property_name}', from request header '{header}'"
-                        " is not a member of event_properties"
-                    )
+                logger.warning(
+                    f"Property '{property_name}', from request header '{header}'"
+                    " is not a member of event_properties"
+                )
     mixpanel.global_event_props = event_props_from_header
 
     return mixpanel
 
 
-def mixpanel_flush(event: NewRequest) -> None:
-    """Send out all pending messages on Pyramid request end."""
-
-    def flush(request: Request, response: Response) -> None:
-        """Send all the enqueued messages at the end of request lifecycle."""
-
-        # If request.mixpanel was never called during request runtime, then
-        # skip initializing and flushing MixpanelTrack.
-        if "mixpanel" not in request.__dict__:
-            return
-
-        request.mixpanel.api._consumer.flush()
-
-    event.request.add_response_callback(flush)
+#def mixpanel_flush(event: NewRequest) -> None:
+#    """Send out all pending messages on Pyramid request end."""
+#
+#    def flush(request: Request, response: Response) -> None:
+#        """Send all the enqueued messages at the end of request lifecycle."""
+#
+#        # If request.mixpanel was never called during request runtime, then
+#        # skip initializing and flushing MixpanelTrack.
+#        if "mixpanel" not in request.__dict__:
+#            return
+#
+#        request.mixpanel.api._consumer.flush()
+#
+#    event.request.add_response_callback(flush)

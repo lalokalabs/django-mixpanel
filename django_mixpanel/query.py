@@ -12,9 +12,9 @@ class MixpanelQuery(object):
 
     ENDPOINT = "https://mixpanel.com/api/2.0/jql"
 
-    def __init__(self, settings: t.Dict[str, str]) -> None:
+    def __init__(self, settings) -> None:
         """Save API credentials."""
-        self.api_secret = settings["mixpanel.api_secret"]
+        self.api_secret = settings.MIXPANEL_API_SECRET
 
     def jql(self, jql: str) -> t.List[t.Dict]:
         """Query Mixpanel using JQL script.

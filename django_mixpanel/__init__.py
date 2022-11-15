@@ -8,9 +8,6 @@ There are two things you can do:
 MixpanelTrack is prepared as `request.mixpanel` for easier usage in view code.
 """
 from dataclasses import dataclass
-from pyramid.config import Configurator
-from pyramid.events import NewRequest
-
 
 @dataclass(frozen=True)
 class Event:
@@ -154,48 +151,3 @@ class ProfileMetaProperties:
     # distinct_id included in the request, rather than allowing this
     # distinct_id to be recognized as an alias during ingestion.
     dollar_ignore_alias: Property = Property("$ignore_alias")
-
-
-def includeme(config: Configurator) -> None:
-    """Pyramid knob."""
-    from pyramid_mixpanel.consumer import MockedConsumer
-    from pyramid_mixpanel.track import mixpanel_flush
-    from pyramid_mixpanel.track import mixpanel_init
-    from pyramid_mixpanel.track import MixpanelTrack
-
-    mixpanel = MixpanelTrack(settings=config.registry.settings)
-    if config.registry.settings.get("pyramid_heroku.structlog"):
-        import structlog
-
-        logger = structlog.get_logger(__name__)
-        logger.info(
-            "Mixpanel configured",
-            consumer=mixpanel.api._consumer.__class__.__name__,
-            events=mixpanel.events.__class__.__name__,
-            event_properties=mixpanel.event_properties.__class__.__name__,
-            profile_properties=mixpanel.profile_properties.__class__.__name__,
-            profile_meta_properties=mixpanel.profile_meta_properties.__class__.__name__,
-            customerio=True if mixpanel.cio else False,
-        )
-        if mixpanel.api._consumer.__class__ == MockedConsumer:
-            logger.warning("Mixpanel is in testing mode, no message will be sent!")
-
-    else:
-        import logging
-
-        logger = logging.getLogger(__name__)
-
-        logger.info(
-            "Mixpanel configured "
-            f"consumer={mixpanel.api._consumer.__class__.__name__}, "
-            f"events={mixpanel.events.__class__.__name__}, "
-            f"event_properties={mixpanel.event_properties.__class__.__name__}, "
-            f"profile_properties={mixpanel.profile_properties.__class__.__name__}, "
-            f"profile_meta_properties={mixpanel.profile_meta_properties.__class__.__name__}, "
-            f"customerio={True if mixpanel.cio else False}"
-        )
-        if mixpanel.api._consumer.__class__ == MockedConsumer:
-            logger.warning("Mixpanel is in testing mode, no message will be sent!")
-
-    config.add_request_method(mixpanel_init, "mixpanel", reify=True)
-    config.add_subscriber(mixpanel_flush, NewRequest)
