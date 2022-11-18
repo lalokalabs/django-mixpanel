@@ -453,17 +453,6 @@ def mixpanel_init(request: HttpRequest) -> MixpanelTrack:
     return mixpanel
 
 
-#def mixpanel_flush(event: NewRequest) -> None:
-#    """Send out all pending messages on Pyramid request end."""
-#
-#    def flush(request: Request, response: Response) -> None:
-#        """Send all the enqueued messages at the end of request lifecycle."""
-#
-#        # If request.mixpanel was never called during request runtime, then
-#        # skip initializing and flushing MixpanelTrack.
-#        if "mixpanel" not in request.__dict__:
-#            return
-#
-#        request.mixpanel.api._consumer.flush()
-#
-#    event.request.add_response_callback(flush)
+def mixpanel_flush(request, response) -> None:
+    """Send out all pending messages on Pyramid request end."""
+    request.mixpanel.api._consumer.flush()
