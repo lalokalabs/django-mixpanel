@@ -425,7 +425,9 @@ def mixpanel_init(request: HttpRequest) -> MixpanelTrack:
     """Return a configured MixpanelTrack class instance."""
     distinct_id = None
     if getattr(request, "user", None):
-        distinct_id = request.user.distinct_id
+        # django always attach AnonymousUser instance so it's not guaranteed to have
+        # distinct id
+        distinct_id = getattr(request.user, "distinct_id", None)
 
     mixpanel = MixpanelTrack(
         settings=Settings, distinct_id=distinct_id
@@ -456,3 +458,4 @@ def mixpanel_init(request: HttpRequest) -> MixpanelTrack:
 def mixpanel_flush(request, response) -> None:
     """Send out all pending messages on Pyramid request end."""
     request.mixpanel.api._consumer.flush()
+    logger.info("Sent mixpanel data", distinct_id=request.mixpanel.distinct_id)
