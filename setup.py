@@ -45,7 +45,7 @@ class VerifyVersionCommand(install):
 
 
 setup(
-    name="pyramid_mixpanel",
+    name="django-mixpanel",
     version=VERSION,
     description="Opinionated Pyramid integration with Mixpanel, a user behavioural analytics platform and CRM.",
     long_description=long_description,
