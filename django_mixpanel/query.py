@@ -14,7 +14,7 @@ class MixpanelQuery(object):
 
     def __init__(self, settings) -> None:
         """Save API credentials."""
-        self.api_secret = settings.MIXPANEL_API_SECRET
+        self.api_secret = settings.get("mixpanel.api_secret")
 
     def jql(self, jql: str) -> t.List[t.Dict]:
         """Query Mixpanel using JQL script.

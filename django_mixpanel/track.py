@@ -181,7 +181,7 @@ class MixpanelTrack:
             settings.get("mixpanel.consumer"), use_structlog
         )
         if settings.get("mixpanel.token"):
-            self.api = Mixpanel(token=settings["mixpanel.token"], consumer=consumer)
+            self.api = Mixpanel(token=settings.get("mixpanel.token"), consumer=consumer)
         else:
             self.api = Mixpanel(token="testing", consumer=MockedConsumer())  # nosec
 
